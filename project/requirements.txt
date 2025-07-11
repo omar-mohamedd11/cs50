@@ -5,3 +5,12 @@ MarkupSafe==2.1.3
 itsdangerous==2.1.2
 click==8.1.7
 blinker==1.6.3
+
+# Database utilities and enhancements
+python-dateutil==2.8.2
+
+# Development and debugging tools
+python-dotenv==1.0.0
+
+# Enhanced logging
+colorlog==6.7.0

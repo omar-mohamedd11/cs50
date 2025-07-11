@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Categories - Personal Finance Tracker{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-header">
+                <h1 class="h2 mb-3">
+                    <i class="fas fa-tags me-2"></i>
+                    Transaction Categories
+                </h1>
+                <p class="text-muted">Manage your income and expense categories</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Category Section -->
+    <div class="row mb-4">
+        <div class="col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-plus-circle me-2"></i>
+                        Add New Category
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('add_category') }}">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Category Name</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="type" class="form-label">Category Type</label>
+                            <select class="form-select" id="type" name="type" required>
+                                <option value="">Select type...</option>
+                                <option value="income">Income</option>
+                                <option value="expense">Expense</option>
+                                <option value="both">Both</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description (Optional)</label>
+                            <textarea class="form-control" id="description" name="description" rows="2"></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="color" class="form-label">Color</label>
+                            <input type="color" class="form-control form-control-color" id="color" name="color" value="#6366f1">
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Add Category
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Categories List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list me-2"></i>
+                        All Categories
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if categories %}
+                        <div class="row">
+                            <!-- Income Categories -->
+                            <div class="col-lg-6 mb-4">
+                                <h6 class="text-success mb-3">
+                                    <i class="fas fa-arrow-up me-2"></i>Income Categories
+                                </h6>
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Description</th>
+                                                <th>Color</th>
+                                                <th>Created</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for category in categories %}
+                                                {% if category.type in ['income', 'both'] %}
+                                                <tr>
+                                                    <td>
+                                                        <span class="badge" style="background-color: {{ category.color }};">
+                                                            {{ category.name }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <small class="text-muted">{{ category.description or 'No description' }}</small>
+                                                    </td>
+                                                    <td>
+                                                        <div class="color-preview" style="width: 20px; height: 20px; background-color: {{ category.color }}; border-radius: 50%; border: 1px solid #ddd;"></div>
+                                                    </td>
+                                                    <td>
+                                                        <small class="text-muted">{{ category.created_at[:10] if category.created_at else 'N/A' }}</small>
+                                                    </td>
+                                                </tr>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Expense Categories -->
+                            <div class="col-lg-6 mb-4">
+                                <h6 class="text-danger mb-3">
+                                    <i class="fas fa-arrow-down me-2"></i>Expense Categories
+                                </h6>
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Description</th>
+                                                <th>Color</th>
+                                                <th>Created</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for category in categories %}
+                                                {% if category.type in ['expense', 'both'] %}
+                                                <tr>
+                                                    <td>
+                                                        <span class="badge" style="background-color: {{ category.color }};">
+                                                            {{ category.name }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <small class="text-muted">{{ category.description or 'No description' }}</small>
+                                                    </td>
+                                                    <td>
+                                                        <div class="color-preview" style="width: 20px; height: 20px; background-color: {{ category.color }}; border-radius: 50%; border: 1px solid #ddd;"></div>
+                                                    </td>
+                                                    <td>
+                                                        <small class="text-muted">{{ category.created_at[:10] if category.created_at else 'N/A' }}</small>
+                                                    </td>
+                                                </tr>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-tags fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No categories found</h5>
+                            <p class="text-muted">Add your first category to get started!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.color-preview {
+    display: inline-block;
+}
+
+.page-header {
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 1rem;
+    margin-bottom: 2rem;
+}
+
+.card {
+    border: none;
+    border-radius: 15px;
+}
+
+.card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px 15px 0 0 !important;
+}
+
+.form-control-color {
+    width: 60px;
+    height: 40px;
+}
+
+.badge {
+    font-size: 0.875em;
+}
+
+.table th {
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+</style>
+{% endblock %}
