@@ -1,55 +1,12 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
-import sqlite3
 import datetime
 from functools import wraps
 import os
+from database import db
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-in-production'
-
-# Database initialization
-def init_db():
-    conn = sqlite3.connect('finance.db')
-    c = conn.cursor()
-    
-    # Users table
-    c.execute('''CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    
-    # Transactions table
-    c.execute('''CREATE TABLE IF NOT EXISTS transactions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
-        category TEXT NOT NULL,
-        amount DECIMAL(10,2) NOT NULL,
-        description TEXT,
-        date DATE NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users (id)
-    )''')
-    
-    # Budgets table
-    c.execute('''CREATE TABLE IF NOT EXISTS budgets (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        category TEXT NOT NULL,
-        amount DECIMAL(10,2) NOT NULL,
-        month INTEGER NOT NULL,
-        year INTEGER NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users (id),
-        UNIQUE(user_id, category, month, year)
-    )''')
-    
-    conn.commit()
-    conn.close()
 
 # Authentication decorator
 def login_required(f):
@@ -81,16 +38,24 @@ def register():
         password_hash = generate_password_hash(password)
         
         try:
-            conn = sqlite3.connect('finance.db')
-            c = conn.cursor()
-            c.execute('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
-                     (username, email, password_hash))
-            conn.commit()
-            conn.close()
+            user_id = db.execute_insert(
+                'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
+                (username, email, password_hash)
+            )
+            
+            # Create default user preferences
+            db.execute_insert(
+                'INSERT INTO user_preferences (user_id) VALUES (?)',
+                (user_id,)
+            )
+            
             flash('Registration successful! Please log in.')
             return redirect(url_for('login'))
-        except sqlite3.IntegrityError:
-            flash('Username or email already exists!')
+        except Exception as e:
+            if 'UNIQUE constraint failed' in str(e):
+                flash('Username or email already exists!')
+            else:
+                flash('Registration failed. Please try again.')
             return render_template('register.html')
     
     return render_template('register.html')
@@ -101,14 +66,13 @@ def login():
         username = request.form['username']
         password = request.form['password']
         
-        conn = sqlite3.connect('finance.db')
-        c = conn.cursor()
-        c.execute('SELECT id, password_hash FROM users WHERE username = ?', (username,))
-        user = c.fetchone()
-        conn.close()
+        user = db.execute_single(
+            'SELECT id, password_hash FROM users WHERE username = ?', 
+            (username,)
+        )
         
-        if user and check_password_hash(user[1], password):
-            session['user_id'] = user[0]
+        if user and check_password_hash(user['password_hash'], password):
+            session['user_id'] = user['id']
             session['username'] = username
             return redirect(url_for('dashboard'))
         else:
@@ -124,44 +88,36 @@ def logout():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    conn = sqlite3.connect('finance.db')
-    c = conn.cursor()
-    
     # Get current month's data
     current_month = datetime.datetime.now().month
     current_year = datetime.datetime.now().year
     
     # Total income and expenses for current month
-    c.execute('''SELECT 
+    totals = db.execute_single('''SELECT 
         SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as total_income,
         SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as total_expenses
         FROM transactions 
         WHERE user_id = ? AND strftime('%m', date) = ? AND strftime('%Y', date) = ?''',
         (session['user_id'], f'{current_month:02d}', str(current_year)))
     
-    totals = c.fetchone()
-    total_income = totals[0] or 0
-    total_expenses = totals[1] or 0
+    total_income = totals['total_income'] or 0
+    total_expenses = totals['total_expenses'] or 0
     
     # Recent transactions
-    c.execute('''SELECT type, category, amount, description, date 
+    recent_transactions = db.execute_query('''SELECT type, category, amount, description, date 
                 FROM transactions 
                 WHERE user_id = ? 
                 ORDER BY date DESC, created_at DESC 
                 LIMIT 5''', (session['user_id'],))
-    recent_transactions = c.fetchall()
     
     # Category-wise expenses for current month
-    c.execute('''SELECT category, SUM(amount) 
+    expense_categories = db.execute_query('''SELECT category, SUM(amount) as total
                 FROM transactions 
                 WHERE user_id = ? AND type = 'expense' 
                 AND strftime('%m', date) = ? AND strftime('%Y', date) = ?
                 GROUP BY category 
                 ORDER BY SUM(amount) DESC''',
                 (session['user_id'], f'{current_month:02d}', str(current_year)))
-    expense_categories = c.fetchall()
-    
-    conn.close()
     
     return render_template('dashboard.html', 
                          total_income=total_income,
@@ -173,14 +129,10 @@ def dashboard():
 @app.route('/transactions')
 @login_required
 def transactions():
-    conn = sqlite3.connect('finance.db')
-    c = conn.cursor()
-    c.execute('''SELECT id, type, category, amount, description, date 
+    all_transactions = db.execute_query('''SELECT id, type, category, amount, description, date 
                 FROM transactions 
                 WHERE user_id = ? 
                 ORDER BY date DESC, created_at DESC''', (session['user_id'],))
-    all_transactions = c.fetchall()
-    conn.close()
     
     return render_template('transactions.html', transactions=all_transactions)
 
@@ -194,50 +146,52 @@ def add_transaction():
         description = request.form['description']
         date = request.form['date']
         
-        conn = sqlite3.connect('finance.db')
-        c = conn.cursor()
-        c.execute('''INSERT INTO transactions (user_id, type, category, amount, description, date)
+        db.execute_insert('''INSERT INTO transactions (user_id, type, category, amount, description, date)
                     VALUES (?, ?, ?, ?, ?, ?)''',
                  (session['user_id'], transaction_type, category, amount, description, date))
-        conn.commit()
-        conn.close()
         
         flash('Transaction added successfully!')
         return redirect(url_for('transactions'))
     
-    return render_template('add_transaction.html')
+    # Get categories from database
+    income_categories = db.execute_query(
+        "SELECT name FROM categories WHERE type IN ('income', 'both') ORDER BY name"
+    )
+    expense_categories = db.execute_query(
+        "SELECT name FROM categories WHERE type IN ('expense', 'both') ORDER BY name"
+    )
+    
+    return render_template('add_transaction.html', 
+                         income_categories=income_categories,
+                         expense_categories=expense_categories)
 
 @app.route('/budgets')
 @login_required
 def budgets():
-    conn = sqlite3.connect('finance.db')
-    c = conn.cursor()
-    
     current_month = datetime.datetime.now().month
     current_year = datetime.datetime.now().year
     
     # Get budgets for current month
-    c.execute('''SELECT category, amount FROM budgets 
+    user_budgets = db.execute_query('''SELECT category, amount FROM budgets 
                 WHERE user_id = ? AND month = ? AND year = ?''',
                 (session['user_id'], current_month, current_year))
-    user_budgets = c.fetchall()
     
     # Get actual spending for each budget category
     budget_data = []
-    for category, budget_amount in user_budgets:
-        c.execute('''SELECT COALESCE(SUM(amount), 0) FROM transactions 
+    for budget in user_budgets:
+        spent_result = db.execute_single('''SELECT COALESCE(SUM(amount), 0) as spent FROM transactions 
                     WHERE user_id = ? AND type = 'expense' AND category = ?
                     AND strftime('%m', date) = ? AND strftime('%Y', date) = ?''',
-                    (session['user_id'], category, f'{current_month:02d}', str(current_year)))
-        spent = c.fetchone()[0]
+                    (session['user_id'], budget['category'], f'{current_month:02d}', str(current_year)))
+        
+        spent = spent_result['spent']
         budget_data.append({
-            'category': category,
-            'budget': budget_amount,
+            'category': budget['category'],
+            'budget': budget['amount'],
             'spent': spent,
-            'remaining': budget_amount - spent
+            'remaining': budget['amount'] - spent
         })
     
-    conn.close()
     return render_template('budgets.html', budgets=budget_data)
 
 @app.route('/add_budget', methods=['GET', 'POST'])
@@ -249,29 +203,26 @@ def add_budget():
         month = int(request.form['month'])
         year = int(request.form['year'])
         
-        conn = sqlite3.connect('finance.db')
-        c = conn.cursor()
         try:
-            c.execute('''INSERT OR REPLACE INTO budgets (user_id, category, amount, month, year)
+            db.execute_update('''INSERT OR REPLACE INTO budgets (user_id, category, amount, month, year)
                         VALUES (?, ?, ?, ?, ?)''',
                      (session['user_id'], category, amount, month, year))
-            conn.commit()
             flash('Budget set successfully!')
         except Exception as e:
             flash('Error setting budget!')
-        finally:
-            conn.close()
         
         return redirect(url_for('budgets'))
     
-    return render_template('add_budget.html')
+    # Get expense categories for budget creation
+    expense_categories = db.execute_query(
+        "SELECT name FROM categories WHERE type IN ('expense', 'both') ORDER BY name"
+    )
+    
+    return render_template('add_budget.html', expense_categories=expense_categories)
 
 @app.route('/api/chart-data')
 @login_required
 def chart_data():
-    conn = sqlite3.connect('finance.db')
-    c = conn.cursor()
-    
     # Get last 6 months of income and expenses
     data = []
     for i in range(6):
@@ -279,23 +230,99 @@ def chart_data():
         month = date.month
         year = date.year
         
-        c.execute('''SELECT 
+        result = db.execute_single('''SELECT 
             SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income,
             SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expenses
             FROM transactions 
             WHERE user_id = ? AND strftime('%m', date) = ? AND strftime('%Y', date) = ?''',
             (session['user_id'], f'{month:02d}', str(year)))
         
-        result = c.fetchone()
         data.append({
             'month': date.strftime('%b %Y'),
-            'income': result[0] or 0,
-            'expenses': result[1] or 0
+            'income': result['income'] or 0,
+            'expenses': result['expenses'] or 0
         })
     
-    conn.close()
     return jsonify(data[::-1])  # Reverse to show oldest first
 
+@app.route('/categories')
+@login_required
+def categories():
+    """View and manage transaction categories."""
+    all_categories = db.execute_query(
+        'SELECT * FROM categories ORDER BY type, name'
+    )
+    return render_template('categories.html', categories=all_categories)
+
+@app.route('/add_category', methods=['POST'])
+@login_required
+def add_category():
+    """Add a new transaction category."""
+    name = request.form['name']
+    category_type = request.form['type']
+    description = request.form.get('description', '')
+    color = request.form.get('color', '#6366f1')
+    
+    try:
+        db.execute_insert(
+            'INSERT INTO categories (name, type, description, color) VALUES (?, ?, ?, ?)',
+            (name, category_type, description, color)
+        )
+        flash('Category added successfully!')
+    except Exception as e:
+        if 'UNIQUE constraint failed' in str(e):
+            flash('Category name already exists!')
+        else:
+            flash('Error adding category!')
+    
+    return redirect(url_for('categories'))
+
+@app.route('/delete_transaction/<int:transaction_id>')
+@login_required
+def delete_transaction(transaction_id):
+    """Delete a transaction."""
+    rows_affected = db.execute_update(
+        'DELETE FROM transactions WHERE id = ? AND user_id = ?',
+        (transaction_id, session['user_id'])
+    )
+    
+    if rows_affected > 0:
+        flash('Transaction deleted successfully!')
+    else:
+        flash('Transaction not found or access denied!')
+    
+    return redirect(url_for('transactions'))
+
+@app.route('/backup')
+@login_required
+def backup():
+    """Create a database backup (admin functionality)."""
+    try:
+        backup_filename = f"finance_backup_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+        backup_path = os.path.join('backups', backup_filename)
+        
+        # Create backups directory if it doesn't exist
+        os.makedirs('backups', exist_ok=True)
+        
+        db.backup_database(backup_path)
+        flash(f'Database backed up successfully to {backup_filename}!')
+    except Exception as e:
+        flash(f'Backup failed: {str(e)}')
+    
+    return redirect(url_for('dashboard'))
+
+@app.route('/stats')
+@login_required
+def stats():
+    """View database statistics."""
+    stats = db.get_database_stats()
+    return render_template('stats.html', stats=stats)
+
 if __name__ == '__main__':
-    init_db()
+    # Initialize database with all tables and default data
+    db.init_database()
+    
+    # Run migrations if needed
+    db.migrate_database()
+    
     app.run(debug=True)

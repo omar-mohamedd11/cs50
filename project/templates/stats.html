@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+
+{% block title %}Database Statistics - Personal Finance Tracker{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-header">
+                <h1 class="h2 mb-3">
+                    <i class="fas fa-chart-bar me-2"></i>
+                    Database Statistics
+                </h1>
+                <p class="text-muted">Overview of your database usage and performance</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card text-white h-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Total Users</h6>
+                            <h2 class="mb-0">{{ stats.users_count or 0 }}</h2>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-users fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card stat-card text-white h-100" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Total Transactions</h6>
+                            <h2 class="mb-0">{{ stats.transactions_count or 0 }}</h2>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-exchange-alt fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card stat-card text-white h-100" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Total Budgets</h6>
+                            <h2 class="mb-0">{{ stats.budgets_count or 0 }}</h2>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-piggy-bank fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card stat-card text-white h-100" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Categories</h6>
+                            <h2 class="mb-0">{{ stats.categories_count or 0 }}</h2>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-tags fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Database Information -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-database me-2"></i>
+                        Database Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <tbody>
+                                <tr>
+                                    <td><strong>Database Type</strong></td>
+                                    <td>SQLite</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Database Size</strong></td>
+                                    <td>
+                                        {% set size_kb = (stats.database_size_bytes or 0) / 1024 %}
+                                        {% if size_kb < 1024 %}
+                                            {{ "%.2f"|format(size_kb) }} KB
+                                        {% else %}
+                                            {{ "%.2f"|format(size_kb / 1024) }} MB
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Tables</strong></td>
+                                    <td>
+                                        <span class="badge bg-primary me-1">users</span>
+                                        <span class="badge bg-success me-1">transactions</span>
+                                        <span class="badge bg-info me-1">budgets</span>
+                                        <span class="badge bg-warning">categories</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Performance Features</strong></td>
+                                    <td>
+                                        <span class="badge bg-secondary me-1">Indexes</span>
+                                        <span class="badge bg-secondary me-1">Foreign Keys</span>
+                                        <span class="badge bg-secondary">Constraints</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-tools me-2"></i>
+                        Database Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('backup') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-download me-2"></i>
+                            Create Backup
+                        </a>
+                        
+                        <button class="btn btn-outline-info" onclick="refreshStats()">
+                            <i class="fas fa-sync-alt me-2"></i>
+                            Refresh Statistics
+                        </button>
+                        
+                        <div class="mt-3">
+                            <h6 class="text-muted">Quick Info</h6>
+                            <ul class="list-unstyled small">
+                                <li><i class="fas fa-shield-alt text-success me-2"></i>Database is secure</li>
+                                <li><i class="fas fa-bolt text-warning me-2"></i>Optimized with indexes</li>
+                                <li><i class="fas fa-backup text-info me-2"></i>Backup available</li>
+                                <li><i class="fas fa-lock text-primary me-2"></i>Data integrity enforced</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Details -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Database Schema Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Key Features</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i>Foreign key relationships</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Data validation constraints</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Automatic timestamps</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Cascading deletes</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Unique constraints</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Performance Optimizations</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i>Indexed user queries</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Indexed date ranges</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Composite indexes</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Connection pooling</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Prepared statements</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.stat-card {
+    border: none;
+    border-radius: 15px;
+    transition: transform 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+
+.stat-icon {
+    opacity: 0.7;
+}
+
+.page-header {
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 1rem;
+    margin-bottom: 2rem;
+}
+
+.card {
+    border: none;
+    border-radius: 15px;
+}
+
+.card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px 15px 0 0 !important;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+</style>
+
+<script>
+function refreshStats() {
+    location.reload();
+}
+</script>
+{% endblock %}
