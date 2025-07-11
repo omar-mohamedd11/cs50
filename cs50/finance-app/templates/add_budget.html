@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}Set Budget - Personal Finance Tracker{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="text-white mb-1">Set Budget</h1>
+                    <p class="text-white-50">Create or update a budget for a category</p>
+                </div>
+                <a href="{{ url_for('budgets') }}" class="btn btn-outline-light">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Budgets
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Budget Form -->
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>Budget Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="budgetForm">
+                        <!-- Category -->
+                        <div class="mb-3">
+                            <label for="category" class="form-label">Category</label>
+                            <select class="form-select" id="category" name="category" required>
+                                <option value="">Select category...</option>
+                                <option value="Food">Food & Dining</option>
+                                <option value="Transportation">Transportation</option>
+                                <option value="Entertainment">Entertainment</option>
+                                <option value="Shopping">Shopping</option>
+                                <option value="Bills">Bills & Utilities</option>
+                                <option value="Healthcare">Healthcare</option>
+                                <option value="Education">Education</option>
+                                <option value="Travel">Travel</option>
+                                <option value="Insurance">Insurance</option>
+                                <option value="Other Expense">Other Expense</option>
+                            </select>
+                        </div>
+
+                        <!-- Budget Amount -->
+                        <div class="mb-3">
+                            <label for="amount" class="form-label">Budget Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="amount" name="amount" 
+                                       step="0.01" min="0.01" required placeholder="0.00">
+                            </div>
+                            <div class="form-text">Enter the maximum amount you want to spend in this category.</div>
+                        </div>
+
+                        <!-- Month and Year -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="month" class="form-label">Month</label>
+                                <select class="form-select" id="month" name="month" required>
+                                    <option value="1">January</option>
+                                    <option value="2">February</option>
+                                    <option value="3">March</option>
+                                    <option value="4">April</option>
+                                    <option value="5">May</option>
+                                    <option value="6">June</option>
+                                    <option value="7">July</option>
+                                    <option value="8">August</option>
+                                    <option value="9">September</option>
+                                    <option value="10">October</option>
+                                    <option value="11">November</option>
+                                    <option value="12">December</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="year" class="form-label">Year</label>
+                                <select class="form-select" id="year" name="year" required>
+                                    <!-- Will be populated by JavaScript -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save me-2"></i>Set Budget
+                            </button>
+                            <a href="{{ url_for('budgets') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Budget Suggestions -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-lightbulb me-2"></i>Budget Suggestions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">Here are some common budget allocations based on the 50/30/20 rule:</p>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary">Essential Categories (50%)</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-utensils me-2 text-muted"></i>Food: 10-15% of income</li>
+                                <li><i class="fas fa-car me-2 text-muted"></i>Transportation: 10-15%</li>
+                                <li><i class="fas fa-home me-2 text-muted"></i>Bills: 20-25%</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-success">Lifestyle Categories (30%)</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-film me-2 text-muted"></i>Entertainment: 5-10%</li>
+                                <li><i class="fas fa-shopping-bag me-2 text-muted"></i>Shopping: 10-15%</li>
+                                <li><i class="fas fa-plane me-2 text-muted"></i>Travel: 5-10%</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mt-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Tip:</strong> Start with conservative amounts and adjust based on your actual spending patterns.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Set current month and year as default
+document.addEventListener('DOMContentLoaded', function() {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1; // getMonth() returns 0-11
+    const currentYear = now.getFullYear();
+    
+    // Set current month
+    document.getElementById('month').value = currentMonth;
+    
+    // Populate year dropdown
+    const yearSelect = document.getElementById('year');
+    for (let year = currentYear - 1; year <= currentYear + 2; year++) {
+        const option = document.createElement('option');
+        option.value = year;
+        option.textContent = year;
+        if (year === currentYear) {
+            option.selected = true;
+        }
+        yearSelect.appendChild(option);
+    }
+});
+
+// Form validation
+document.getElementById('budgetForm').addEventListener('submit', function(e) {
+    const amount = parseFloat(document.getElementById('amount').value);
+    
+    if (amount <= 0) {
+        e.preventDefault();
+        alert('Please enter a valid budget amount greater than 0');
+        return false;
+    }
+    
+    if (amount > 100000) {
+        if (!confirm('That\'s a large budget amount. Are you sure this is correct?')) {
+            e.preventDefault();
+            return false;
+        }
+    }
+    
+    return true;
+});
+
+// Quick amount buttons
+function setQuickAmount(amount) {
+    document.getElementById('amount').value = amount;
+}
+</script>
+{% endblock %}
