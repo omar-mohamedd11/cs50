@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Quote
+{% endblock %}
+
+{% block main %}
+    <h2 class="card-title p-5">Quote Share Price</h2>
+    <form action="/quote" method="post">
+        <div class="d-inline-flex">
+            <input autocomplete="off" autofocus class="form-control mx-auto w-auto p-2" name="symbol"
+                placeholder="Stock symbol" type="text">
+            <button class="btn btn-primary mx-3 p-2 px-4" type="submit">Get Quote</button>
+        </div>
+    </form>
+{% endblock %}

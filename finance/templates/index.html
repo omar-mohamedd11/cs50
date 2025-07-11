@@ -1,0 +1,46 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Index
+{% endblock %}
+
+{% block main %}
+    <div class="d-flex align-items-center w-100 justify-content-center">
+        <h2 class="card-title p-5 flex-grow-1 text-center" style="margin-left:120px">Stock Summary</h2>
+        <form action="/add" method="get">
+            <button class="btn btn-primary p-2 px-4" type="submit">Add Cash</button>
+        </form>
+    </div>
+    <div class="table-responsive" style="overflow: auto; max-height: 580px">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th scope="col">Symbol</th>
+                    <th scope="col">Shares</th>
+                    <th scope="col">Price</th>
+                    <th scope="col">TOTAL</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for stock in stocks %}
+                <tr>
+                    <td>{{stock['symbol']}}</td>
+                    <td>{{stock['shares']}}</td>
+                    <td>{{stock['price']}}</td>
+                    <td>{{stock['total_price']}}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td class="border-0 fw-bold" colspan="3">Cash</td>
+                    <td class="border-0">{{cash}}</td>
+                </tr>
+                <tr>
+                    <td class="border-0 fw-bold" colspan="3">TOTAL</td>
+                    <td class="border-0">{{total}}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+{% endblock %}

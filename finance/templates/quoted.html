@@ -1,0 +1,10 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Quoted
+{% endblock %}
+
+{% block main %}
+    <h2 class="card-title p-5">Quoted share price</h2>
+    <p class="fs-5">A share of <span class="fw-bold">{{symbol}}</span> costs {{price}}</p>
+{% endblock %}
