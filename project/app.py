@@ -1,19 +1,36 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for
-from datetime import datetime, timedelta
-import json
+from flask_caching import Cache
+from flask_cors import CORS
+from datetime import datetime, timedelta, date
 import os
-from collections import defaultdict
+from dotenv import load_dotenv
+import logging
+from functools import wraps
+
+# Import our models and validators
+from models import db, Transaction, Budget, Category
+from validators import validate_transaction_data, validate_budget_data, validate_category_data
+
+# Load environment variables
+load_dotenv()
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# In-memory storage (in production, use a proper database)
-transactions = []
-budgets = []
-categories = [
-    'Food & Dining', 'Transportation', 'Shopping', 'Entertainment',
-    'Bills & Utilities', 'Healthcare', 'Travel', 'Education',
-    'Groceries', 'Gas', 'Income', 'Investment', 'Other'
-]
+# Configuration
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///budget_tracker.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['CACHE_TYPE'] = os.getenv('CACHE_TYPE', 'simple')
+app.config['CACHE_DEFAULT_TIMEOUT'] = int(os.getenv('CACHE_DEFAULT_TIMEOUT', 300))
+
+# Initialize extensions
+db.init_app(app)
+cache = Cache(app)
+CORS(app)
 
 # Sample data
 sample_transactions = [
