@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Transactions - Personal Finance Tracker{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="text-white mb-1">Transaction History</h1>
+                    <p class="text-white-50">Track all your income and expenses</p>
+                </div>
+                <a href="{{ url_for('add_transaction') }}" class="btn btn-light">
+                    <i class="fas fa-plus me-2"></i>Add Transaction
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transactions Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>All Transactions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if transactions %}
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="transactionsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Category</th>
+                                        <th>Amount</th>
+                                        <th>Description</th>
+                                        <th>Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for transaction in transactions %}
+                                    <tr>
+                                        <td>
+                                            <span class="transaction-type {{ transaction[1] }}">
+                                                <i class="fas {{ 'fa-arrow-up' if transaction[1] == 'income' else 'fa-arrow-down' }} me-1"></i>
+                                                {{ transaction[1].title() }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <strong>{{ transaction[2] }}</strong>
+                                        </td>
+                                        <td class="{{ 'income-text' if transaction[1] == 'income' else 'expense-text' }}">
+                                            <strong>${{ "%.2f"|format(transaction[3]) }}</strong>
+                                        </td>
+                                        <td>
+                                            <span class="text-muted">{{ transaction[4] or 'No description' }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="text-muted">{{ transaction[5] }}</span>
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteTransaction({{ transaction[0] }})">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Summary Cards -->
+                        <div class="row mt-4">
+                            <div class="col-md-4">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <h6 class="text-muted">Total Transactions</h6>
+                                    <h4 class="text-primary">{{ transactions|length }}</h4>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <h6 class="text-muted">Total Income</h6>
+                                    <h4 class="income-text">
+                                        ${{ "%.2f"|format(transactions|selectattr('1', 'equalto', 'income')|map(attribute='3')|sum) }}
+                                    </h4>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <h6 class="text-muted">Total Expenses</h6>
+                                    <h4 class="expense-text">
+                                        ${{ "%.2f"|format(transactions|selectattr('1', 'equalto', 'expense')|map(attribute='3')|sum) }}
+                                    </h4>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-receipt text-muted" style="font-size: 4rem;"></i>
+                            <h4 class="text-muted mt-3">No Transactions Yet</h4>
+                            <p class="text-muted">Start tracking your finances by adding your first transaction.</p>
+                            <a href="{{ url_for('add_transaction') }}" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Add Your First Transaction
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function deleteTransaction(transactionId) {
+    if (confirm('Are you sure you want to delete this transaction?')) {
+        // Here you would implement the delete functionality
+        // For now, we'll just show an alert
+        alert('Delete functionality would be implemented here');
+    }
+}
+
+// Add search and filter functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // You can add table search/filter functionality here
+});
+</script>
+{% endblock %}

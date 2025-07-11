@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Personal Finance Tracker{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Welcome Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="text-white mb-1">Welcome back, {{ session.username }}!</h1>
+            <p class="text-white-50">Here's your financial overview for this month</p>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="stats-card income-card fade-in-up">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="amount">${{ "%.2f"|format(total_income) }}</p>
+                        <p class="label">Total Income</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-arrow-up"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="stats-card expense-card fade-in-up">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="amount">${{ "%.2f"|format(total_expenses) }}</p>
+                        <p class="label">Total Expenses</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-arrow-down"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="stats-card balance-card fade-in-up">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="amount">${{ "%.2f"|format(balance) }}</p>
+                        <p class="label">Net Balance</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-wallet"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts and Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>Financial Overview (Last 6 Months)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="financialChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-plus me-2"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('add_transaction') }}" class="btn btn-primary">
+                            <i class="fas fa-plus-circle me-2"></i>Add Transaction
+                        </a>
+                        <a href="{{ url_for('add_budget') }}" class="btn btn-success">
+                            <i class="fas fa-chart-pie me-2"></i>Set Budget
+                        </a>
+                        <a href="{{ url_for('transactions') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-list me-2"></i>View All Transactions
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Transactions and Expense Categories -->
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clock me-2"></i>Recent Transactions
+                    </h5>
+                    <a href="{{ url_for('transactions') }}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_transactions %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Category</th>
+                                        <th>Amount</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for transaction in recent_transactions %}
+                                    <tr>
+                                        <td>
+                                            <span class="transaction-type {{ transaction[0] }}">
+                                                {{ transaction[0] }}
+                                            </span>
+                                        </td>
+                                        <td>{{ transaction[1] }}</td>
+                                        <td class="{{ 'income-text' if transaction[0] == 'income' else 'expense-text' }}">
+                                            ${{ "%.2f"|format(transaction[2]) }}
+                                        </td>
+                                        <td>{{ transaction[4] }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-receipt text-muted" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-3">No transactions yet. <a href="{{ url_for('add_transaction') }}">Add your first transaction</a></p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>Top Spending Categories
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if expense_categories %}
+                        {% for category, amount in expense_categories[:5] %}
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <strong>{{ category }}</strong>
+                            </div>
+                            <div class="text-end">
+                                <span class="expense-text fw-bold">${{ "%.2f"|format(amount) }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-tags text-muted" style="font-size: 2rem;"></i>
+                            <p class="text-muted mt-2">No expenses this month</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Financial Chart
+async function loadFinancialChart() {
+    try {
+        const response = await fetch('/api/chart-data');
+        const data = await response.json();
+        
+        const ctx = document.getElementById('financialChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.map(d => d.month),
+                datasets: [{
+                    label: 'Income',
+                    data: data.map(d => d.income),
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }, {
+                    label: 'Expenses',
+                    data: data.map(d => d.expenses),
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toFixed(0);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error loading chart data:', error);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadFinancialChart);
+</script>
+{% endblock %}
